@@ -32,7 +32,7 @@ static volatile int dutyCyclePercent = 30;
 
 #define USE_PWM (1)
 #define PIN_COUNT (3)
-#define LED_FPS	(200)
+#define LED_FPS	(100)
 #define LED_COUNT (PIN_COUNT*(PIN_COUNT-1))
 static volatile uint8_t ledStates[LED_COUNT] = { 255, 25, 63, 0, 0, 0};
 static volatile uint8_t ledIndex = 0;
@@ -200,7 +200,22 @@ void initUpdateTimer(void)
 	CMU_ClockEnable(cmuClock_TIMER1, true);
 
 	// Set top value to overflow at the desired PWM_FREQ frequency
-	TIMER_TopSet(TIMER1, CMU_ClockFreqGet(cmuClock_TIMER1) / UPDATE_FREQ);
+	uint32_t top;
+	top = CMU_ClockFreqGet(cmuClock_TIMER1) / UPDATE_FREQ;
+	while(top > TIMER_MaxCount(TIMER1))
+	{
+		if(cmuClkDiv_512 == CMU_ClockDivGet(cmuClock_HFPER))
+		{
+			if(CMU_HFRCOBandGet() == 0)
+				break;
+			CMU_HFRCOBandSet(CMU_HFRCOBandGet() - 1);
+			CMU_ClockDivSet(cmuClock_HFPER, cmuClkDiv_1);
+		}
+
+		CMU_ClockDivSet(cmuClock_HFPER, CMU_ClockDivGet(cmuClock_HFPER) * 2);
+		top = CMU_ClockFreqGet(cmuClock_TIMER1) / UPDATE_FREQ;
+	}
+	TIMER_TopSet(TIMER1, top);
 
 	// Initialize the timer
 	TIMER_Init_TypeDef timerInit = TIMER_INIT_DEFAULT;
@@ -244,7 +259,7 @@ int main(void)
 	/* Chip errata */
 	CHIP_Init();
 
-	CMU_HFRCOBandSet(cmuHFRCOBand_21MHz);
+	CMU_HFRCOBandSet(cmuHFRCOBand_28MHz);
 	CMU_ClockDivSet(cmuClock_HFPER, cmuClkDiv_1);
 
 	/* If first word of user data page is non-zero, enable Energy Profiler trace */
