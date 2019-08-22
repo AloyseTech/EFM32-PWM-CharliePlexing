@@ -268,11 +268,20 @@ int main(void)
 	double f = 2.0;
 	while (1) {
 		BSP_LedToggle(0);
+#if USE_PWM
 		Delay(1);
 		t++;
 		for(int i = 0; i < LED_COUNT; i++)
 		{
 			ledStates[i] = 128 + (sin(2*3.14*f*t/1000.0 + 2*3.14*i/LED_COUNT))*127.0;
 		}
+#else
+		Delay(100);
+		t++;
+		for(int i = 0; i < LED_COUNT; i++)
+		{
+			ledStates[i] = (((t+i)%LED_COUNT) < (LED_COUNT/2))?1:0;
+		}
+#endif
 	}
 }
